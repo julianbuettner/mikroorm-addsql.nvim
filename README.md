@@ -5,9 +5,9 @@
 > It was written end-to-end by an AI coding assistant (Claude), based on a
 > single user's Neovim config and tested only against a handful of
 > hand-written examples in a headless Neovim session. It has not been used
-> in a real project, published, code-reviewed by a human expert, or
-> hardened against edge cases. Treat it as a starting point / proof of
-> concept, read the code before trusting it, and expect to fix things.
+> in a real MikroORM project, code-reviewed by a human expert, or hardened
+> against edge cases. Treat it as a starting point / proof of concept,
+> read the code before trusting it, and expect to fix things.
 > Use at your own risk.
 
 Syntax-highlights and auto-formats raw SQL embedded in [MikroORM](https://mikro-orm.io/)
@@ -70,38 +70,47 @@ above.
 
 ## Installation
 
-This plugin is not published anywhere — it lives locally. With
-[lazy.nvim](https://github.com/folke/lazy.nvim), point it at the local
-path:
+Published at [julianbuettner/mikroorm-addsql.nvim](https://github.com/julianbuettner/mikroorm-addsql.nvim).
+With [lazy.nvim](https://github.com/folke/lazy.nvim), add it as a
+dependency of conform.nvim so it's loaded before conform's `opts` runs:
 
 ```lua
 {
-  dir = "~/development/mikroorm-addsql.nvim",
-  dependencies = { "stevearc/conform.nvim" },
-  ft = "typescript",
+  "stevearc/conform.nvim",
+  dependencies = {
+    "julianbuettner/mikroorm-addsql.nvim",
+  },
+  opts = function()
+    return {
+      formatters = {
+        mikroorm_addsql = require("mikroorm-addsql").formatter,
+      },
+      formatters_by_ft = {
+        typescript = { "mikroorm_addsql", "injected", "prettierd", "prettier" },
+      },
+    }
+  end,
 }
 ```
+
+`opts` must be a function (not a plain table) here — a plain table is
+evaluated while lazy.nvim is still only collecting plugin specs, before
+`mikroorm-addsql.nvim` has actually been loaded onto `'runtimepath'`, so
+`require("mikroorm-addsql")` would fail. Wrapping it in a function defers
+evaluation until after dependencies are loaded.
 
 ## Configuration
 
 The treesitter query loads automatically once the plugin is on
 `'runtimepath'` — nothing to do there.
 
-For formatting, register the formatter with conform.nvim and add it (plus
-conform's built-in `injected` formatter) to your `typescript`
-`formatters_by_ft` entry, before whatever else you run (e.g. prettier):
-
-```lua
--- in your conform.nvim opts
-opts = {
-  formatters = {
-    mikroorm_addsql = require("mikroorm-addsql").formatter,
-  },
-  formatters_by_ft = {
-    typescript = { "mikroorm_addsql", "injected", "prettierd", "prettier" },
-  },
-},
-```
+For formatting, register the formatter with conform.nvim (see the install
+snippet above) and add it — plus conform's built-in `injected` formatter
+— to your `typescript` `formatters_by_ft` entry, before whatever else you
+run (e.g. prettier). `injected` must come after `mikroorm_addsql` since it
+relies on the shape `mikroorm_addsql` establishes; anything you list after
+`injected` (like prettier) runs on the whole file afterward and won't
+touch the template literal's contents.
 
 Then formatting a `.ts` buffer (e.g. `require("conform").format()`, or
 however you've bound it) will reshape and reformat every `addSql(\`...\`)`
